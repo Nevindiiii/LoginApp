@@ -1,24 +1,77 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
+import { jwtDecode } from 'jwt-decode';
 import './LoginForm.css';
 
 const LoginForm = () => {
+  const [user, setUser] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) setUser(JSON.parse(savedUser));
+
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    
+    if (code) {
+      fetch(`http://localhost:5000/auth/github/callback?code=${code}`)
+        .then(res => res.json())
+        .then(data => {
+          const userData = { name: data.name, email: data.email, picture: data.avatar_url };
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+          window.history.replaceState({}, document.title, window.location.pathname);
+        })
+        .catch(() => setError('GitHub authentication failed'));
+    }
+  }, []);
+
   const handleGoogleSuccess = (credentialResponse) => {
-    console.log('Google login success:', credentialResponse);
+    const decoded = jwtDecode(credentialResponse.credential);
+    const userData = { name: decoded.name, email: decoded.email, picture: decoded.picture };
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+    
+    fetch('http://localhost:5000/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: credentialResponse.credential })
+    }).catch(() => setError('Failed to connect to server'));
   };
 
   const handleGoogleError = () => {
-    console.log('Google login failed');
+    setError('Google login failed or was cancelled');
   };
 
   const handleGitHubLogin = () => {
     window.location.href = `https://github.com/login/oauth/authorize?client_id=Ov23li6iJGbrWrK5pvxo&scope=user`;
   };
 
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+    setError('');
+  };
+
+  if (user) {
+    return (
+      <div className="login-container">
+        <div className="user-profile">
+          <img src={user.picture} alt="Profile" className="profile-pic" />
+          <h2>{user.name}</h2>
+          <p>{user.email}</p>
+          <button onClick={handleLogout} className="logout-button">Logout</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="login-container">
       <div className="login-box">
         <h2>Login</h2>
+        {error && <div className="error-message">{error}</div>}
         <GoogleLogin
           onSuccess={handleGoogleSuccess}
           onError={handleGoogleError}
