@@ -3,6 +3,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
 import './LoginForm.css';
 
+// LoginForm component handles Google and GitHub authentication
 const LoginForm = () => {
   const [user, setUser] = useState(null);
   const [error, setError] = useState('');
@@ -14,6 +15,7 @@ const LoginForm = () => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
     
+    // Handle GitHub OAuth callback
     if (code) {
       fetch(`http://localhost:5000/auth/github/callback?code=${code}`)
         .then(res => res.json())
@@ -26,7 +28,7 @@ const LoginForm = () => {
         .catch(() => setError('GitHub authentication failed'));
     }
   }, []);
-
+// Handle successful Google login
   const handleGoogleSuccess = (credentialResponse) => {
     const decoded = jwtDecode(credentialResponse.credential);
     const userData = { name: decoded.name, email: decoded.email, picture: decoded.picture };
@@ -39,7 +41,7 @@ const LoginForm = () => {
       body: JSON.stringify({ token: credentialResponse.credential })
     }).catch(() => setError('Failed to connect to server'));
   };
-
+// Handle Google login error
   const handleGoogleError = () => {
     setError('Google login failed or was cancelled');
   };
@@ -53,7 +55,7 @@ const LoginForm = () => {
     localStorage.removeItem('user');
     setError('');
   };
-
+// If user is logged in, show profile info and logout button
   if (user) {
     return (
       <div className="login-container">
@@ -66,7 +68,7 @@ const LoginForm = () => {
       </div>
     );
   }
-
+// If not logged in, show login options
   return (
     <div className="login-container">
       <div className="login-box">
